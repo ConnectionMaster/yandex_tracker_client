@@ -141,6 +141,58 @@ def test_queue_triggers_create(net_mock, mocked_fake_queue):
     assert real_request == data
 
 
+def test_queue_forms_get(net_mock, mocked_fake_queue):
+    net_mock.get(
+        api_url('/queues/{}/forms'.format(mocked_fake_queue.key)),
+        json=[],
+    )
+    forms = mocked_fake_queue.forms
+    assert forms == []
+
+
+def test_queue_forms_get_envelope(net_mock, mocked_fake_queue):
+    body = {
+        'queue': {
+            'self': api_url('/queues/{}'.format(mocked_fake_queue.key)),
+            'id': 39619,
+            'key': mocked_fake_queue.key,
+            'display': 'Test queue',
+        },
+        'forms': [
+            {'id': 173454, 'name': 'Form A', 'path': 'surveys/173454'},
+        ],
+        'version': 2,
+        'showDefaultCreationForm': False,
+    }
+    net_mock.get(
+        api_url('/queues/{}/forms'.format(mocked_fake_queue.key)),
+        json=body,
+    )
+    forms = mocked_fake_queue.forms
+    assert len(forms) == 1
+    assert forms[0]['id'] == 173454
+    assert forms[0]['name'] == 'Form A'
+
+
+def test_queue_forms_get_list_with_self(net_mock, mocked_fake_queue):
+    from yandex_tracker_client.objects import Resource
+
+    net_mock.get(
+        api_url('/queues/{}/forms'.format(mocked_fake_queue.key)),
+        json=[
+            {
+                'self': api_url('/queues/{}/forms/173454'.format(mocked_fake_queue.key)),
+                'id': 173454,
+                'name': 'Form A',
+            },
+        ],
+    )
+    forms = mocked_fake_queue.forms
+    assert len(forms) == 1
+    assert isinstance(forms[0], Resource)
+    assert forms[0].id == 173454
+
+
 def test_queue_macros_create(net_mock, mocked_fake_queue):
     data = {
         "name": "Test macro",

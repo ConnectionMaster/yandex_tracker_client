@@ -8,9 +8,10 @@ import requests
 
 try:
     from requests.utils import check_header_validity
-except:
+except ImportError:
     # For compatibility with requests version < 2.11
-    check_header_validity = lambda header: True
+    def check_header_validity(header):
+        return True
 
 import six
 from six.moves.urllib.parse import urlparse, urljoin

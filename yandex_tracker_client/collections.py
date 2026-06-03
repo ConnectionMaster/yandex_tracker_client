@@ -753,6 +753,19 @@ class Queues(Collection):
         )
 
     @injected_property
+    def forms(self, queue):
+        data = self._execute_request(
+            self._connection.get,
+            path=queue._path + '/forms',
+        )
+        if not isinstance(data, list):
+            if isinstance(data, dict) and 'forms' in data:
+                data = data.get('forms') or []
+            else:
+                return data
+        return data
+
+    @injected_property
     def workflows(self, queue):
         return self._execute_request(
             self._connection.get,

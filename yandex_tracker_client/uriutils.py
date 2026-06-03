@@ -31,7 +31,7 @@ class Matcher(object):
             resource
         ))
 
-        #sort by priority
+        # sort by priority
         self._patterns.sort(key=lambda it: it[0], reverse=True)  # ok for our N < 20
 
     def match(self, uri):

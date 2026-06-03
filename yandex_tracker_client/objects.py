@@ -79,7 +79,7 @@ class Object(object):
                     local_fields_to_add[local_field_key] = field_value
                     self._local_fields_map[local_field_key] = field
             value.update(local_fields_to_add)
-            if type(value) == self._local_fields_map_type():
+            if isinstance(value, self._local_fields_map_type()):
                 return value
             return self._local_fields_map_type()(value, self)
 
