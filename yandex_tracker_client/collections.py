@@ -1713,3 +1713,134 @@ class Goal(Entity):
     entity = 'goal'
     path = Entity._get_path_by_entity(entity)
     import_path = Entity._get_import_path_by_entity(entity)
+
+    fields = dict(Entity.fields, keyResultItems=[])
+
+    @staticmethod
+    def _build_key_result_item(text, kind='binary', assignee=None, deadline=None,
+                               progress=None, achieved=None):
+        item = {'type': kind, 'text': text}
+        if assignee is not None:
+            item['assignee'] = assignee
+        if deadline is not None:
+            if isinstance(deadline, string_types):
+                deadline = {'date': deadline, 'deadlineType': 'date'}
+            item['deadline'] = deadline
+        if progress is not None:
+            item['progress'] = progress
+        if achieved is not None:
+            item['achieved'] = achieved
+        return item
+
+    @staticmethod
+    def _normalize_key_result(item):
+        """Convert a key result item (as returned by GET, possibly with nested
+        Reference objects and read-only fields) into a writable payload dict.
+
+        NB: update the field list below if the key result schema gains new
+        writable fields, otherwise they are silently dropped.
+        """
+        def plain(value):
+            if hasattr(value, 'as_dict'):
+                value = value.as_dict()
+            if isinstance(value, dict):
+                return {k: plain(v) for k, v in iteritems(value)}
+            if isinstance(value, (list, tuple)):
+                return [plain(v) for v in value]
+            return value
+
+        item = plain(item)
+        out = {}
+        for key in ('type', 'text', 'progress', 'achieved'):
+            if key in item:
+                out[key] = item[key]
+        assignee = item.get('assignee')
+        if assignee is not None:
+            # assignee comes back as a user object; the API accepts a login/id
+            out['assignee'] = assignee.get('id') if isinstance(assignee, dict) else assignee
+        deadline = item.get('deadline')
+        if isinstance(deadline, dict) and deadline.get('date'):
+            out['deadline'] = {
+                'date': str(deadline['date'])[:10],
+                'deadlineType': deadline.get('deadlineType', 'date'),
+            }
+        return out
+
+    def _update_key_results(self, goal, value, params=None):
+        # The entities API expects key result mutations wrapped in a "fields"
+        # object (unlike the top-level body used by the generic entity update).
+        params = dict(params or {})
+        params.setdefault('fields', 'keyResultItems')
+        result = self._execute_request(
+            self._connection.patch,
+            path=goal._path,
+            params=params,
+            data={'fields': {'keyResultItems': value}},
+            version=goal._version,
+        )
+        goal.__dict__ = result.__dict__
+        return goal
+
+    @staticmethod
+    def _extract_key_results(value):
+        # Non-default entity attributes are returned nested under "fields".
+        fields = value.get('fields')
+        if isinstance(fields, dict) and 'keyResultItems' in fields:
+            return fields['keyResultItems'] or []
+        if 'keyResultItems' in value:
+            return value['keyResultItems'] or []
+        return None
+
+    @injected_property
+    def key_results(self, goal):
+        """Goal's key results (``keyResultItems``) as a list of dicts.
+
+        Each item has 'id', 'type' ('binary'/'value'), 'text', 'assignee',
+        'deadline', 'progress' and/or 'achieved'. Fetched on demand.
+        """
+        items = self._extract_key_results(goal._value)
+        if items is not None:
+            return items
+        refreshed = self._execute_request(
+            self._connection.get,
+            path=goal._path,
+            params={'fields': 'keyResultItems'},
+        )
+        return self._extract_key_results(refreshed._value) or []
+
+    @injected_method
+    def add_key_result(self, goal, text, kind='binary', assignee=None,
+                       deadline=None, progress=None, achieved=None, params=None):
+        """Append a single key result to the goal (the ``add`` operator).
+
+        Unlike :meth:`set_key_results` this keeps the ids of existing items.
+
+        :param kind: 'binary' (completion-based) or 'value' (measured by metric)
+        :param deadline: 'YYYY-MM-DD' string or a ready
+            ``{'date': ..., 'deadlineType': 'date'}`` dict
+        :param progress: dict with 'start', 'end' and optional 'current'
+            (required for ``kind='value'``)
+        :param achieved: completion flag (for ``kind='binary'``)
+        """
+        item = self._build_key_result_item(
+            text, kind=kind, assignee=assignee, deadline=deadline,
+            progress=progress, achieved=achieved,
+        )
+        return self._update_key_results(goal, {'add': item}, params)
+
+    @injected_method
+    def set_key_results(self, goal, items, params=None):
+        """Replace the whole key result list with ``items`` (list of dicts).
+
+        Items may be freshly built dicts or items read back from
+        :attr:`key_results` (read-only fields and nested user objects are
+        stripped). To delete a single key result, pass the list without it.
+        Note: the API regenerates item ids on every replace.
+        """
+        payload = [self._normalize_key_result(item) for item in items]
+        return self._update_key_results(goal, payload, params)
+
+    @injected_method
+    def clear_key_results(self, goal, params=None):
+        """Delete all key results of the goal (``keyResultItems = null``)."""
+        return self._update_key_results(goal, None, params)

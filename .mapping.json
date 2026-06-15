@@ -32,6 +32,7 @@
   "tests/smoke/entities/test_entities_checklists.py":"library/python/yandex_tracker_client/tests/smoke/entities/test_entities_checklists.py",
   "tests/smoke/entities/test_entities_comments.py":"library/python/yandex_tracker_client/tests/smoke/entities/test_entities_comments.py",
   "tests/smoke/entities/test_entities_general.py":"library/python/yandex_tracker_client/tests/smoke/entities/test_entities_general.py",
+  "tests/smoke/entities/test_entities_key_results.py":"library/python/yandex_tracker_client/tests/smoke/entities/test_entities_key_results.py",
   "tests/smoke/entities/test_entities_links.py":"library/python/yandex_tracker_client/tests/smoke/entities/test_entities_links.py",
   "tests/smoke/entities/test_entities_search.py":"library/python/yandex_tracker_client/tests/smoke/entities/test_entities_search.py",
   "tests/smoke/issues/__init__.py":"library/python/yandex_tracker_client/tests/smoke/issues/__init__.py",
