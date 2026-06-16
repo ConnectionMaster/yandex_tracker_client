@@ -1527,6 +1527,13 @@ class EntityChecklistItems(Collection):
             path=self.path
         )
 
+    def update_item(self, item_id, data):
+        return self._execute_request(
+            self._connection.patch,
+            path=self.path + "/{}".format(item_id),
+            data=data
+        )
+
     def move_item(self, item_id, before):
         return self._execute_request(
             self._connection.post,
